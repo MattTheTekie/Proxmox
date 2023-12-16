@@ -39,9 +39,9 @@ curl -sSL https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_LA
 chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
 msg_ok "Installed Docker Compose $DOCKER_COMPOSE_LATEST_VERSION"
 
-whiptail --title "Minecraft Bedrock" --msgbox "Configure your Minecraft Bedrock server" 11 58
+whiptail --title "Minecraft Server" --msgbox "Configure your Minecraft server" 11 58
 
-BEDROCK_SERVER_PORT=19132
+MINECRAFT_SERVER_PORT=25565
 
 WORLD_NAME=$(whiptail --inputbox "What would you like to call your world?" 11 58 "My World" --title "World Name" 3>&1 1>&2 2>&3)
 exitstatus=$?
@@ -104,9 +104,9 @@ fi
 
 cat >/root/config.yml <<EOF
 containers:
-  bedrock:
+  minecraft:
     # Name of the container
-    - name: minecraft_bedrock_server
+    - name: minecraft_server
       worlds:
         - /server/worlds/$WORLD_NAME
 schedule:
@@ -122,13 +122,13 @@ trim:
   minKeep: 2
 EOF
 
-cat >/root/minecraft-bedrock.yaml <<EOF
+cat >/root/minecraft-server.yaml <<EOF
 version: '3.8'
 
 services:
-  bedrock-server:
-    image: itzg/minecraft-bedrock-server
-    container_name: minecraft_bedrock_server
+  minecraft-server:
+    image: itzg/minecraft-server
+    container_name: minecraft_server
     environment:
       EULA: "TRUE"
       GAMEMODE: $GAME_MODE
@@ -138,26 +138,26 @@ services:
       ALLOW_LIST_USERS: "$ALLOW_LIST"
       LEVEL_SEED: "$LEVEL_SEED"
     ports:
-      - $BEDROCK_SERVER_PORT:19132/udp
+      - $MINECRAFT_SERVER_PORT:19132/udp
     volumes:
-      - /opt/bedrock/server:/data
+      - /opt/minecraft/server:/data
     stdin_open: true
     tty: true
     restart: unless-stopped
 EOF
 
 if [ $BACKUPS = 1 ]; then
-  cat >>/root/minecraft-bedrock.yaml <<EOF
+  cat >>/root/minecraft-server.yaml <<EOF
   backup:
-    image: kaiede/minecraft-bedrock-backup
+    image: kaiede/minecraft-backup
     restart: always
     container_name: minecraft_backup
     depends_on:
-      - "bedrock-server"
+      - "minecraft-server"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /opt/bedrock/backups:/backups
-      - /opt/bedrock/server:/server
+      - /opt/minecraft/backups:/backups
+      - /opt/minecraft/server:/server
       - /root/config.yml:/backups/config.yml
     tty: true
 EOF
@@ -189,12 +189,12 @@ http {
 }
 EOF
 
-SERVER_ADDR="$(ip -4 -o addr show eth0 | awk '{print $4}' | cut -d "/" -f 1):$BEDROCK_SERVER_PORT"
+SERVER_ADDR="$(ip -4 -o addr show eth0 | awk '{print $4}' | cut -d "/" -f 1):$MINECRAFT_SERVER_PORT"
 cat >/root/dashboard.html <<EOF
 <!DOCTYPE html>
 <html>
   <body>
-    <h1>Minecraft Bedrock - $WORLD_NAME</h1>
+    <h1>Minecraft Server - $WORLD_NAME</h1>
     <p>
       Connect to $WORLD_NAME at $SERVER_ADDR
     </p>
@@ -202,7 +202,7 @@ cat >/root/dashboard.html <<EOF
 </html>
 EOF
 
-cat >>/root/minecraft-bedrock.yaml <<EOF
+cat >>/root/minecraft-server.yaml <<EOF
   dashboard:
     image: nginx:alpine
     restart: always
@@ -221,9 +221,9 @@ EOF
 motd_ssh
 customize
 
-$DOCKER_CONFIG/cli-plugins/docker-compose -f /root/minecraft-bedrock.yaml up --detach
+$DOCKER_CONFIG/cli-plugins/docker-compose -f /root/minecraft-server.yaml up --detach
 
 ## docker exec -it minecraft_server bash send-command gamerule showcoordinates true
 
-msg_ok "Installed Minecraft Bedrock"
+msg_ok "Installed Minecraft Server"
 msg_ok "Connect to $WORLD_NAME at $SERVER_ADDR"
