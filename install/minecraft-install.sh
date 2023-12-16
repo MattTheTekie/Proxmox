@@ -138,7 +138,7 @@ services:
       ALLOW_LIST_USERS: "$ALLOW_LIST"
       LEVEL_SEED: "$LEVEL_SEED"
     ports:
-      - $MINECRAFT_SERVER_PORT:19132/udp
+      - $MINECRAFT_SERVER_PORT:25565/tcp
     volumes:
       - /opt/minecraft/server:/data
     stdin_open: true
